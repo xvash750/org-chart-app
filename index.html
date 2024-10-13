@@ -3,15 +3,90 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style.css">
     <title>Org Chart from CSV</title>
-    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .node {
+            margin: 10px;
+            padding: 10px;
+            border: 1px solid #007BFF;
+            border-radius: 5px;
+            display: inline-block;
+        }
+        .link {
+            border-left: 2px solid #ccc;
+            height: 20px;
+            position: relative;
+            left: 25px;
+            margin-top: -20px;
+        }
+    </style>
 </head>
 <body>
     <h1>Upload CSV to Generate Org Chart</h1>
     <input type="file" id="csvFile" accept=".csv">
     <div id="orgChart"></div>
-    
-    <script src="script.js"></script>
+
+    <script>
+        document.getElementById("csvFile").addEventListener("change", function (event) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+
+            reader.onload = function (e) {
+                const text = e.target.result;
+                const data = parseCSV(text);
+                createOrgChart(data);
+            };
+
+            reader.readAsText(file);
+        });
+
+        // Function to parse CSV data
+        function parseCSV(text) {
+            const rows = text.split('\n').slice(1); // Skip header
+            const nodes = rows.map(row => {
+                const [id, name, managerId] = row.split(',');
+                return { id, name, managerId };
+            });
+            return nodes;
+        }
+
+        // Function to create the org chart
+        function createOrgChart(data) {
+            const map = new Map();
+            const root = document.createElement("div");
+            root.className = "node";
+            root.innerText = "Root";
+            document.getElementById("orgChart").innerHTML = ""; // Clear previous chart
+            document.getElementById("orgChart").appendChild(root);
+
+            data.forEach(({ id, name, managerId }) => {
+                const node = document.createElement("div");
+                node.className = "node";
+                node.innerText = name;
+
+                if (managerId) {
+                    const manager = map.get(managerId);
+                    if (manager) {
+                        // Create a container for the manager and their children
+                        let container = manager.childrenContainer || document.createElement("div");
+                        container.style.display = "flex";
+                        container.style.flexDirection = "column";
+                        container.appendChild(node);
+                        manager.childrenContainer = container;
+                        manager.node.appendChild(container);
+                    }
+                } else {
+                    // If no manager, append directly to the root
+                    root.appendChild(node);
+                }
+
+                map.set(id, { node, childrenContainer: null });
+            });
+        }
+    </script>
 </body>
 </html>
