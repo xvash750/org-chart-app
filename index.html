@@ -3,90 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Org Chart from CSV</title>
+    <title>Org Chart</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-        }
-        .node {
-            margin: 10px;
-            padding: 10px;
-            border: 1px solid #007BFF;
-            border-radius: 5px;
-            display: inline-block;
+        .node circle {
+            fill: steelblue;
+            stroke: #fff;
+            stroke-width: 3px;
         }
         .link {
-            border-left: 2px solid #ccc;
-            height: 20px;
-            position: relative;
-            left: 25px;
-            margin-top: -20px;
+            fill: none;
+            stroke: #ccc;
+            stroke-width: 2px;
         }
     </style>
 </head>
 <body>
-    <h1>Upload CSV to Generate Org Chart</h1>
-    <input type="file" id="csvFile" accept=".csv">
-    <div id="orgChart"></div>
-
+    <input type="file" id="upload" />
+    <svg width="960" height="600"></svg>
     <script>
-        document.getElementById("csvFile").addEventListener("change", function (event) {
+        const svg = d3.select("svg"),
+              width = +svg.attr("width"),
+              height = +svg.attr("height");
+
+        function buildOrgChart(data) {
+            const root = d3.stratify()
+                .id(d => d.id)
+                .parentId(d => d.managerId)
+                (data);
+
+            const treeLayout = d3.tree().size([width, height - 200]);
+            treeLayout(root);
+
+            svg.selectAll(".link")
+                .data(root.links())
+                .enter().append("path")
+                .attr("class", "link")
+                .attr("d", d3.linkHorizontal()
+                    .x(d => d.x)
+                    .y(d => d.y)
+                );
+
+            const node = svg.selectAll(".node")
+                .data(root.descendants())
+                .enter().append("g")
+                .attr("class", "node")
+                .attr("transform", d => `translate(${d.x},${d.y})`);
+
+            node.append("circle")
+                .attr("r", 20);
+
+            node.append("text")
+                .attr("dy", -25)
+                .style("text-anchor", "middle")
+                .text(d => d.data.name);
+        }
+
+        document.getElementById("upload").addEventListener("change", function(event) {
             const file = event.target.files[0];
-            const reader = new FileReader();
-
-            reader.onload = function (e) {
-                const text = e.target.result;
-                const data = parseCSV(text);
-                createOrgChart(data);
-            };
-
-            reader.readAsText(file);
-        });
-
-        // Function to parse CSV data
-        function parseCSV(text) {
-            const rows = text.split('\n').slice(1); // Skip header
-            const nodes = rows.map(row => {
-                const [id, name, managerId] = row.split(',');
-                return { id, name, managerId };
-            });
-            return nodes;
-        }
-
-        // Function to create the org chart
-        function createOrgChart(data) {
-            const map = new Map();
-            const root = document.createElement("div");
-            root.className = "node";
-            root.innerText = "Root";
-            document.getElementById("orgChart").innerHTML = ""; // Clear previous chart
-            document.getElementById("orgChart").appendChild(root);
-
-            data.forEach(({ id, name, managerId }) => {
-                const node = document.createElement("div");
-                node.className = "node";
-                node.innerText = name;
-
-                if (managerId) {
-                    const manager = map.get(managerId);
-                    if (manager) {
-                        // Create a container for the manager and their children
-                        let container = manager.childrenContainer || document.createElement("div");
-                        container.style.display = "flex";
-                        container.style.flexDirection = "column";
-                        container.appendChild(node);
-                        manager.childrenContainer = container;
-                        manager.node.appendChild(container);
+            if (file) {
+                Papa.parse(file, {
+                    header: true,
+                    dynamicTyping: true,
+                    complete: function(results) {
+                        buildOrgChart(results.data);
                     }
-                } else {
-                    // If no manager, append directly to the root
-                    root.appendChild(node);
-                }
-
-                map.set(id, { node, childrenContainer: null });
-            });
-        }
+                });
+            }
+        });
     </script>
 </body>
 </html>
