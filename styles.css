@@ -1,0 +1,22 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+}
+
+#orgChart {
+    margin-top: 20px;
+}
+
+.link {
+    fill: none;
+    stroke: #ccc;
+    stroke-width: 2px;
+}
+
+.node circle {
+    fill: #007BFF;
+}
+
+.node text {
+    font: 12px sans-serif;
+}
